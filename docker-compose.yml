@@ -12,8 +12,9 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3306:3306"
+    tmpfs:
+      - /var/lib/mysql:rw,noexec,nosuid,size=2g
     volumes:
-      - mariadb_data:/var/lib/mysql
       - ./dump.sql:/docker-entrypoint-initdb.d/dump.sql
     networks:
       - tahvel_network
@@ -23,13 +24,10 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-    command: 
-      - --max_allowed_packet=256M 
-      - --innodb_buffer_pool_size=1G 
-      - --innodb_log_file_size=256M
-      - --innodb_flush_method=fsync
-      - --innodb_use_native_aio=0
-      - --skip-innodb_doublewrite
+    command:
+      - --max_allowed_packet=256M
+      - --innodb_buffer_pool_size=512M
+      - --innodb_log_file_size=128M
 
   phpmyadmin:
     image: phpmyadmin:latest
