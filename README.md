@@ -76,9 +76,11 @@ docker-compose up -d
 ```
 
 See käivitab:
-- **MariaDB** konteiner (port 3306)
-- **phpMyAdmin** (http://localhost:8080)
-- **Seeder** konteiner (ootab skripti käivitamist)
+- **MariaDB** konteiner (Debian-based, port 3306)
+- **phpMyAdmin** (Alpine-based, http://localhost:8080)
+- **Seeder** konteiner (Bun on Alpine Linux)
+
+Konteinrid käivituvad automaatselt ja MariaDB healthcheck tagab, et teenused ootavad andmebaasi valmimist.
 
 ### 3. Andmebaasi skeemi kontrollimine
 
@@ -91,7 +93,7 @@ Andmebaasi skeem laetakse automaatselt `dump.sql` failist. Kontrolli phpMyAdmini
 
 ### 4. Seemneskripti käivitamine
 
-Esmalt, oota 10-15 sekundit, et andmebaas saaks täielikult käivituda. Seejärel:
+Docker healthcheck tagab, et andmebaas on valmis. Käivita seemneskript:
 
 ```powershell
 docker exec -it tahvel_seeder bun install
@@ -159,6 +161,22 @@ grades               : ~864,000
 - Garanteeritud ühesugune tulemus erinevatel süsteemidel
 
 ## 🛠️ Tehniline info
+
+### Docker & Alpine Linux
+- **Seeder konteiner**: Alpine Linux + Bun runtime
+  - Base image: `oven/bun:1.1-alpine` (~90MB)
+  - Lisatud tööriistad: `mysql-client` (debugging jaoks)
+  - Bun on kiire TypeScript/JavaScript runtime (asendab Node.js)
+- **MariaDB konteiner**: Debian-based MariaDB 11.4
+  - Automaatne skeem laadimine `/docker-entrypoint-initdb.d/`
+  - Healthcheck tagab andmebaasi valmiduse
+- **phpMyAdmin konteiner**: Apache + PHP Alpine basil
+
+### Docker Compose funktsioonid
+- **Healthcheck**: MariaDB konteiner teatab valmidusest
+- **Service dependencies**: Seeder ja phpMyAdmin ootavad andmebaasi
+- **Named volumes**: Andmed säilivad konteineri taaskäivitamisel
+- **Custom network**: Konteinrid suhtlevad omavahel `tahvel_network` võrgus
 
 ### Optimeerimised suurandmete jaoks
 1. **Partiipõhine sisestus**: 5000 rida korraga (mitte rida-real)
@@ -241,6 +259,38 @@ ORDER BY lessons_count DESC
 LIMIT 10;
 ```
 
+## 🐛 Debugging Alpine konteinris
+
+### Logi konteinri sisse
+```powershell
+# Seeder konteiner (Alpine + Bun)
+docker exec -it tahvel_seeder sh
+
+# MariaDB konteiner
+docker exec -it tahvel_mariadb bash
+
+# phpMyAdmin konteiner
+docker exec -it tahvel_phpmyadmin sh
+```
+
+### Käsitsi andmebaasi ühendus Alpine konteineris
+```sh
+# Seeder konteineris
+docker exec -it tahvel_seeder mysql -h mariadb -u student -pPassw0rd tahvel
+```
+
+### Kontrolli Bun versiooni
+```powershell
+docker exec -it tahvel_seeder bun --version
+```
+
+### Vaata konteineri logisid
+```powershell
+docker logs tahvel_mariadb
+docker logs tahvel_seeder
+docker logs tahvel_phpmyadmin
+```
+
 ## 🧹 Puhastamine
 
 ### Andmete kustutamine (skeem jääb alles)
@@ -269,16 +319,38 @@ docker-compose down
 docker-compose down -v
 ```
 
+### Image'de kustutamine (Alpine konteiner jm)
+```powershell
+# Vaata image'sid
+docker images | findstr tahvel
+
+# Kustuta seeder image
+docker rmi tahvel-seeder
+```
+
 ## ❓ Probleemide lahendamine
 
 ### Probleem: "Connection refused" viga
-**Lahendus**: Oota 10-15 sekundit pärast `docker-compose up -d` käsku. MariaDB vajab käivituseks aega.
+**Lahendus**: Docker healthcheck peaks seda vältima, aga kui ikka esineb, kontrolli:
+```powershell
+# Kontrolli konteineri staatust
+docker ps -a | findstr tahvel
+
+# Kontrolli MariaDB logisid
+docker logs tahvel_mariadb
+```
 
 ### Probleem: "Out of memory" viga
 **Lahendus**: Suurenda Docker Desktopi RAM-i eraldust (Settings → Resources → Memory → vähemalt 4GB).
 
 ### Probleem: Skript jookseb väga aeglaselt
 **Lahendus**: See on normaalne. 2M+ rea sisestamine võtab aega. Jälgi progressi konsoolis.
+
+### Probleem: Alpine konteineris "command not found"
+**Lahendus**: Alpine Linux kasutab `apk` package manager'it. Vajadusel installi:
+```sh
+docker exec -it tahvel_seeder apk add --no-cache <package-name>
+```
 
 ### Probleem: Duplikaatide vead (UNIQUE constraint)
 **Lahendus**: Kustuta andmed ja käivita uuesti:
