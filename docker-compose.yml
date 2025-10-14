@@ -12,9 +12,8 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3306:3306"
-    tmpfs:
-      - /var/lib/mysql:rw,noexec,nosuid,size=2g
     volumes:
+      - mysql_data:/var/lib/mysql
       - ./dump.sql:/docker-entrypoint-initdb.d/dump.sql
     networks:
       - tahvel_network
@@ -72,7 +71,7 @@ services:
     command: tail -f /dev/null
 
 volumes:
-  mariadb_data:
+  mysql_data:
   seeder_node_modules:
 
 networks:
