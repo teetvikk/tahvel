@@ -21,6 +21,15 @@ mariadb_data/
 Thumbs.db
 desktop.ini
 
+# Alpine/Linux specific
+*.swp
+*.swo
+*~
+.*.sw?
+
+# Docker
+.dockerignore
+
 # Logs
 *.log
 npm-debug.log*

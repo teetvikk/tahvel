@@ -2,12 +2,19 @@
 
 Täismahus koolijuhtimissüsteemi andmebaas realistlike andmetega, sisaldades **≥2 000 000 rida** kohaloleku tabelis.
 
-## 📋 Projekti kirjeldus
+## 💻 Keskkonnad
+
+- **Host masin**: Alpine Linux virtuaalmasin
+- **Docker Engine**: Alpine Linuxis (mitte Docker Desktop)
+- **Konteinrid**: Alpine Linux (seeder, phpMyAdmin) + Debian (MariaDB)
+- **Runtime**: Bun (TypeScript/JavaScript) Alpine konteineris
+
+## �📋 Projekti kirjeldus
 
 See projekt sisaldab:
 - **MariaDB andmebaasi** koolijuhtimissüsteemi jaoks
 - **Realistlikke andmeid** Eesti koolidele (nimed, linnad, ained)
-- **Suurandmete genereerimise skripti** (Bun/TypeScript)
+- **Suurandmete genereerimise skripti** (Bun/TypeScript Alpine konteineris)
 - **phpMyAdmin** andmebaaside haldamiseks
 - **Docker Compose** keskkonna lihtsaks käivitamiseks
 
@@ -55,23 +62,80 @@ users (teachers) → lessons, assignments
 
 ## 🔧 Eeldused
 
-- **Docker Desktop** (Windows: https://docs.docker.com/desktop/install/windows-install/)
-- **Docker Compose** (kaasas Docker Desktopiga)
+### Alpine Linux virtuaalmasinas
+- **Docker Engine** installitud
+- **Docker Compose** installitud
+- **Git** (projekti allalaadimiseks)
 - Vaba kettaruum: ~5GB
 - RAM: vähemalt 4GB (soovitatav 8GB)
 
+### Docker installimine Alpine Linuxis (kui pole veel)
+```sh
+# Uuenda package list
+apk update
+
+# Installi Docker ja Docker Compose
+apk add docker docker-compose
+
+# Käivita Docker teenus
+rc-update add docker boot
+service docker start
+
+# Lisa oma kasutaja docker gruppi
+addgroup $USER docker
+
+# Installi Git
+apk add git
+```
+
+### Konteinerites (automaatselt)
+- **Alpine Linux** - seeder konteineri base (Bun runtime)
+- **Debian Linux** - MariaDB konteiner
+- **Alpine Linux** - phpMyAdmin konteiner
+
+### 🏗️ Arhitektuur
+```
+┌─────────────────────────────────────────┐
+│  HOST MASIN (Alpine Linux VM)           │
+│  ┌───────────────────────────────────┐  │
+│  │  Docker Engine                    │  │
+│  │  ┌────────────────────────┐       │  │
+│  │  │ Konteiner 1: MariaDB   │       │  │
+│  │  │ OS: Debian Linux       │       │  │
+│  │  └────────────────────────┘       │  │
+│  │  ┌────────────────────────┐       │  │
+│  │  │ Konteiner 2: Seeder    │       │  │
+│  │  │ OS: Alpine Linux + Bun │       │  │
+│  │  └────────────────────────┘       │  │
+│  │  ┌────────────────────────┐       │  │
+│  │  │ Konteiner 3: phpMyAdmin│       │  │
+│  │  │ OS: Alpine Linux       │       │  │
+│  │  └────────────────────────┘       │  │
+│  └───────────────────────────────────┘  │
+└─────────────────────────────────────────┘
+```
+
 ## 🚀 Käivitamine nullist
 
-### 1. Projekti allalaadimine
+### Kiire kontroll (valikuline)
 
-```powershell
+Kontrolli, kas kõik eeldused on täidetud:
+
+```sh
+chmod +x setup-alpine.sh
+./setup-alpine.sh
+```
+
+### 1. Projekti allalaadimine (Alpine Linux VM-s)
+
+```sh
 git clone https://github.com/teetvikk/tahvel.git
 cd tahvel
 ```
 
 ### 2. Dockeri konteinrite käivitamine
 
-```powershell
+```sh
 docker-compose up -d
 ```
 
@@ -95,7 +159,7 @@ Andmebaasi skeem laetakse automaatselt `dump.sql` failist. Kontrolli phpMyAdmini
 
 Docker healthcheck tagab, et andmebaas on valmis. Käivita seemneskript:
 
-```powershell
+```sh
 docker exec -it tahvel_seeder bun install
 docker exec -it tahvel_seeder bun run seed.ts
 ```
@@ -201,15 +265,19 @@ grades               : ~864,000
 
 ```
 tahvel/
-├── dump.sql              # Andmebaasi skeem
+├── dump.sql              # Andmebaasi skeem (MariaDB SQL)
 ├── seed.ts               # Seemneskript (Bun/TypeScript)
-├── package.json          # Sõltuvused
-├── docker-compose.yml    # Dockeri konfiguratsioon
-├── Dockerfile            # Seeder konteineri konfiguratsioon
+├── package.json          # Sõltuvused (npm/bun)
+├── docker-compose.yml    # Dockeri konfiguratsioon (Alpine compatible)
+├── Dockerfile            # Seeder konteineri konfiguratsioon (Alpine base)
 ├── .env                  # Keskkonnamuutujad
-├── .gitignore           # Ignoreeritavad failid
-└── README.md            # See fail
+├── .gitignore            # Ignoreeritavad failid (Alpine/Linux)
+├── .dockerignore         # Dockeri build exclusions
+├── setup-alpine.sh       # Alpine Linux eelkontrolli skript
+└── README.md             # See fail
 ```
+
+**Kõik failid on Alpine Linux-ga ühilduvad!** ✅
 
 ## 🔍 Kasulikud päringud
 
@@ -262,33 +330,45 @@ LIMIT 10;
 ## 🐛 Debugging Alpine konteinris
 
 ### Logi konteinri sisse
-```powershell
+```sh
 # Seeder konteiner (Alpine + Bun)
 docker exec -it tahvel_seeder sh
 
-# MariaDB konteiner
+# MariaDB konteiner (Debian, seega bash)
 docker exec -it tahvel_mariadb bash
 
-# phpMyAdmin konteiner
+# phpMyAdmin konteiner (Alpine)
 docker exec -it tahvel_phpmyadmin sh
 ```
 
-### Käsitsi andmebaasi ühendus Alpine konteineris
+### Käsitsi andmebaasi ühendus konteinerist
 ```sh
-# Seeder konteineris
+# Seeder konteineris (mysql-client on juba installitud)
 docker exec -it tahvel_seeder mysql -h mariadb -u student -pPassw0rd tahvel
 ```
 
 ### Kontrolli Bun versiooni
-```powershell
+```sh
 docker exec -it tahvel_seeder bun --version
 ```
 
 ### Vaata konteineri logisid
-```powershell
+```sh
 docker logs tahvel_mariadb
 docker logs tahvel_seeder
 docker logs tahvel_phpmyadmin
+```
+
+### Kontrolli Docker Engine staatust (Alpine host)
+```sh
+# Kontrolli Docker teenuse staatust
+rc-service docker status
+
+# Vaata jooksvaid konteinereid
+docker ps
+
+# Vaata kõiki konteinereid (sh peatatud)
+docker ps -a
 ```
 
 ## 🧹 Puhastamine
@@ -310,38 +390,44 @@ SET FOREIGN_KEY_CHECKS = 1;
 ```
 
 ### Konteinrite peatamine
-```powershell
+```sh
 docker-compose down
 ```
 
 ### Konteinrite ja andmete kustutamine
-```powershell
+```sh
 docker-compose down -v
 ```
 
-### Image'de kustutamine (Alpine konteiner jm)
-```powershell
+### Image'de kustutamine
+```sh
 # Vaata image'sid
-docker images | findstr tahvel
+docker images | grep tahvel
 
 # Kustuta seeder image
 docker rmi tahvel-seeder
+
+# Kustuta kõik kasutamata image'd
+docker image prune -a
 ```
 
 ## ❓ Probleemide lahendamine
 
 ### Probleem: "Connection refused" viga
 **Lahendus**: Docker healthcheck peaks seda vältima, aga kui ikka esineb, kontrolli:
-```powershell
+```sh
 # Kontrolli konteineri staatust
-docker ps -a | findstr tahvel
+docker ps -a | grep tahvel
 
 # Kontrolli MariaDB logisid
 docker logs tahvel_mariadb
+
+# Kontrolli võrku
+docker network inspect tahvel_tahvel_network
 ```
 
 ### Probleem: "Out of memory" viga
-**Lahendus**: Suurenda Docker Desktopi RAM-i eraldust (Settings → Resources → Memory → vähemalt 4GB).
+**Lahendus**: Suurenda Alpine Linux VM-i RAM-i eraldust (virtualiseerimise tarkvaras: VirtualBox/VMware/Hyper-V → vähemalt 4GB).
 
 ### Probleem: Skript jookseb väga aeglaselt
 **Lahendus**: See on normaalne. 2M+ rea sisestamine võtab aega. Jälgi progressi konsoolis.
@@ -351,13 +437,57 @@ docker logs tahvel_mariadb
 ```sh
 docker exec -it tahvel_seeder apk add --no-cache <package-name>
 ```
+**NB!** See käivitad ALPINE HOST masinas, aga käsk täidetakse konteineris!
+
+### Probleem: "Docker daemon not running"
+**Lahendus**: 
+```sh
+# Käivita Docker teenus
+rc-service docker start
+
+# Kontrolli staatust
+rc-service docker status
+
+# Lisa Docker automaatkäivitusse
+rc-update add docker boot
+```
+
+### Probleem: "Permission denied" docker käskudel
+**Lahendus**:
+```sh
+# Lisa oma kasutaja docker gruppi
+sudo addgroup $USER docker
+
+# Logi välja ja sisse, või käivita
+newgrp docker
+```
 
 ### Probleem: Duplikaatide vead (UNIQUE constraint)
 **Lahendus**: Kustuta andmed ja käivita uuesti:
-```powershell
+```sh
 docker exec -it tahvel_mariadb mysql -ustudent -pPassw0rd tahvel -e "SET FOREIGN_KEY_CHECKS=0; TRUNCATE attendance; TRUNCATE grades; TRUNCATE submissions; TRUNCATE assignments; TRUNCATE lessons; TRUNCATE class_memberships; TRUNCATE classes; TRUNCATE users; TRUNCATE subjects; TRUNCATE schools; SET FOREIGN_KEY_CHECKS=1;"
 docker exec -it tahvel_seeder bun run seed.ts
 ```
+
+## ❓ KKK (Korduma Kippuvad Küsimused)
+
+### Miks on kolm Alpine Linuxi kihti (host + konteinrid)?
+- **Host Alpine**: Sinu virtuaalmasin, kus jookseb Docker Engine
+- **Konteineri Alpine**: Isoleeritud keskkonnad (seeder, phpMyAdmin)
+Iga konteiner on eraldatud, kuigi nad kõik kasutavad Alpine Linuxi. See on normaalne Docker arhitektuur!
+
+### Kas ma pean oskama Alpine Linuxi käske?
+Jah, põhilised Alpine käsud on kasulikud:
+- `apk` - package manager (nagu `apt` Debian/Ubuntu-s)
+- `rc-service` - teenuste haldus
+- `rc-update` - autostart haldus
+- `sh` - Alpine default shell (mitte bash!)
+
+### Mis on Bun ja miks mitte Node.js?
+Bun on kiire, moodne JavaScript/TypeScript runtime. Alpine image on väiksem (~90MB vs ~500MB) ja Bun on kiirem kui Node.js. Ideaalne suurandmete töötlemiseks!
+
+### Kas Docker Desktop on vaja?
+**EI!** Sinu Alpine VM kasutab **Docker Engine** (native Linux Docker). Docker Desktop on ainult Windowsi/macOS-i jaoks. Alpine Linuxis jookseb "päris" Docker!
 
 ## 📝 Litsents
 
