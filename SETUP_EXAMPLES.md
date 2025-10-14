@@ -244,3 +244,99 @@ docker exec -it tahvel_seeder bun run seed.ts
 
 **Kui kõik ✅, saad jätkata!**
 **Kui mõni ❌, järgi ekraanil olevaid juhiseid!**
+
+---
+
+## 🐛 RUNTIME PROBLEEMID
+
+### Probleem: "Got error 1 'Operation not permitted' during COMMIT"
+
+```
+Error during seeding: error: Got error 1 "Operation not permitted" during COMMIT
+      errno: 1180,
+       code: "ER_ERROR_DURING_COMMIT"
+```
+
+**Põhjus:** MariaDB InnoDB fail-süsteemi õiguste probleem Alpine Linuxis (Docker volume).
+
+**Lahendus:**
+
+```sh
+# 1. Peata konteinrid
+docker-compose down
+
+# 2. Kustuta vana volume (HOIATUS: kustutab andmebaasi!)
+docker volume rm tahvel_mariadb_data
+
+# 3. Käivita uuesti (uuendatud konfiguratsiooniga)
+docker-compose up -d
+
+# 4. Oota ~30 sekundit, et andmebaas käivituks
+docker logs tahvel_mariadb
+
+# 5. Kontrolli, et andmebaas on valmis
+docker exec -it tahvel_mariadb mariadb -ustudent -pPassw0rd -e "SHOW DATABASES;"
+
+# 6. Proovi seemneskripti uuesti
+docker exec -it tahvel_seeder bun install
+docker exec -it tahvel_seeder bun run seed.ts
+```
+
+**Alternatiivne lahendus (kui ülaltoodud ei aita):**
+
+```sh
+# Kasuta tmpfs (RAM disk) andmebaasi jaoks (KIIRE, aga andmed kaovad restart'il)
+# Muuda docker-compose.yml:
+# volumes:
+#   - mariadb_data:/var/lib/mysql  # <-- kommenteeri välja
+#   - type: tmpfs                   # <-- lisa see
+#     target: /var/lib/mysql
+```
+
+### Probleem: "Connection refused" seemneskriptis
+
+```
+Error during seeding: Error: connect ECONNREFUSED 172.18.0.2:3306
+```
+
+**Lahendus:**
+
+```sh
+# Kontrolli, et MariaDB on tõesti valmis
+docker logs tahvel_mariadb | tail -20
+
+# Peaksid nägema:
+# [Note] mariadbd: ready for connections.
+
+# Kui ei ole valmis, oota veel 10-20 sekundit
+sleep 20
+
+# Proovi uuesti
+docker exec -it tahvel_seeder bun run seed.ts
+```
+
+### Probleem: Skript jookseb väga aeglaselt või hangub
+
+```
+=== Seeding Users ===
+Inserting teachers...
+[... ei liigu edasi ...]
+```
+
+**Lahendus:**
+
+```sh
+# 1. Kontrolli MariaDB logisid
+docker logs tahvel_mariadb -f
+
+# 2. Kontrolli CPU ja mälu kasutust
+docker stats
+
+# 3. Kui vaja, suurenda VM-i ressursse:
+# - RAM: vähemalt 4GB (soovitatav 8GB)
+# - CPU: vähemalt 2 tuuma
+
+# 4. Kui VM-il on vähe mälu, vähenda batch size
+# Muuda seed.ts:
+# const BATCH_SIZE = 1000;  // oli 5000
+```

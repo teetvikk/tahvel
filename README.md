@@ -432,6 +432,18 @@ docker network inspect tahvel_tahvel_network
 ### Probleem: "Out of memory" viga
 **Lahendus**: Suurenda Alpine Linux VM-i RAM-i eraldust (virtualiseerimise tarkvaras: VirtualBox/VMware/Hyper-V → vähemalt 4GB).
 
+### Probleem: "Got error 1 'Operation not permitted' during COMMIT"
+**Lahendus**: MariaDB failiõiguste probleem Alpine Linuxis. Taaskäivita puhtalt lehelt:
+```sh
+docker-compose down
+docker volume rm tahvel_mariadb_data
+docker-compose up -d
+# Oota 30 sekundit
+docker exec -it tahvel_seeder bun install
+docker exec -it tahvel_seeder bun run seed.ts
+```
+**Täpsem selgitus:** Vaata [SETUP_EXAMPLES.md](SETUP_EXAMPLES.md) - "Runtime probleemid" sektsioon
+
 ### Probleem: Skript jookseb väga aeglaselt
 **Lahendus**: See on normaalne. 2M+ rea sisestamine võtab aega. Jälgi progressi konsoolis.
 

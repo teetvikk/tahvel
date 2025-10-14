@@ -23,7 +23,13 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-    command: --max_allowed_packet=256M --innodb_buffer_pool_size=1G --innodb_log_file_size=256M
+    command: 
+      - --max_allowed_packet=256M 
+      - --innodb_buffer_pool_size=1G 
+      - --innodb_log_file_size=256M
+      - --innodb_flush_method=fsync
+      - --innodb_use_native_aio=0
+      - --skip-innodb_doublewrite
 
   phpmyadmin:
     image: phpmyadmin:latest
