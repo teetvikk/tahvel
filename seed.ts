@@ -311,10 +311,15 @@ async function seedLessons(
   const columns = ['class_id', 'teacher_id', 'date', 'start_time', 'end_time', 'topic', 'subject_id'];
   let batch: any[][] = [];
   let count = 0;
+  const usedSlots = new Set<string>(); // Track used class_id-date-start_time combinations
   
   const totalLessons = AVG_LESSONS_PER_CLASS * classIds.length;
+  const maxAttempts = totalLessons * 3; // Allow multiple attempts to find unique slots
+  let attempts = 0;
   
-  for (let i = 0; i < totalLessons; i++) {
+  while (count < totalLessons && attempts < maxAttempts) {
+    attempts++;
+    
     const classId = faker.helpers.arrayElement(classIds);
     const teacherId = faker.helpers.arrayElement(teacherIds);
     const subjectId = faker.helpers.arrayElement(subjectIds);
@@ -323,6 +328,16 @@ async function seedLessons(
     const startTime = `${startHour.toString().padStart(2, '0')}:00:00`;
     const endTime = `${(startHour + 1).toString().padStart(2, '0')}:30:00`;
     const topic = faker.lorem.sentence(4);
+    
+    // Create unique key for this lesson slot
+    const slotKey = `${classId}-${date.toISOString().split('T')[0]}-${startTime}`;
+    
+    // Skip if this slot is already used
+    if (usedSlots.has(slotKey)) {
+      continue;
+    }
+    
+    usedSlots.add(slotKey);
     
     batch.push([
       classId,
