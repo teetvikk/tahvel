@@ -115,11 +115,32 @@ async function seedSchools(connection: mysql.Connection): Promise<number[]> {
   const columns = ['name', 'address', 'city'];
   const batch: any[][] = [];
   const ids: number[] = [];
+  const usedNames = new Set<string>();
+  
+  // Estonian school name variations for authenticity
+  const schoolTypes = ['Gümnaasium', 'Kool', 'Keskkool', 'Ühisgümnaasium', 'Põhikool', 'Kutsekool'];
+  const nameVariations = ['', 'I', 'II', 'III', 'Kesklinna', 'Linna', 'Riigi', 'Erakool'];
   
   for (let i = 0; i < NUM_SCHOOLS; i++) {
     const city = faker.helpers.arrayElement(estonianCities);
+    const schoolType = faker.helpers.arrayElement(schoolTypes);
+    const variation = faker.helpers.arrayElement(nameVariations);
+    
+    let schoolName = variation 
+      ? `${city} ${variation} ${schoolType}`
+      : `${city} ${schoolType}`;
+    
+    // Ensure uniqueness by adding number if duplicate
+    let counter = 1;
+    let uniqueName = schoolName;
+    while (usedNames.has(uniqueName)) {
+      uniqueName = `${schoolName} ${counter}`;
+      counter++;
+    }
+    usedNames.add(uniqueName);
+    
     batch.push([
-      `${city} ${faker.helpers.arrayElement(['Gümnaasium', 'Kool', 'Keskkool', 'Ühisgümnaasium'])}`,
+      uniqueName,
       faker.location.streetAddress(),
       city
     ]);
