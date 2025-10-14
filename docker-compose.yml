@@ -67,10 +67,12 @@ services:
     volumes:
       - ./seed.ts:/app/seed.ts
       - ./package.json:/app/package.json
+      - seeder_node_modules:/app/node_modules
     command: tail -f /dev/null
 
 volumes:
   mariadb_data:
+  seeder_node_modules:
 
 networks:
   tahvel_network:
