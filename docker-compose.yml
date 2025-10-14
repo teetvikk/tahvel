@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   mariadb:
-    image: mariadb:11.4
+    image: mysql:8.0
     container_name: tahvel_mariadb
     restart: unless-stopped
     environment:
@@ -19,15 +19,18 @@ services:
     networks:
       - tahvel_network
     healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
     command:
+      - --default-authentication-plugin=mysql_native_password
       - --max_allowed_packet=256M
       - --innodb_buffer_pool_size=512M
       - --innodb_log_file_size=128M
+      - --innodb_flush_log_at_trx_commit=2
+      - --innodb_use_native_aio=0
 
   phpmyadmin:
     image: phpmyadmin:latest
