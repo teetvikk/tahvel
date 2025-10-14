@@ -126,6 +126,8 @@ chmod +x setup-alpine.sh
 ./setup-alpine.sh
 ```
 
+**Näited ja täpsemad juhised:** Vaata [SETUP_EXAMPLES.md](SETUP_EXAMPLES.md) - seal on täpsed näited, mida skript väljastab ja kuidas probleeme lahendada.
+
 ### 1. Projekti allalaadimine (Alpine Linux VM-s)
 
 ```sh
@@ -274,6 +276,7 @@ tahvel/
 ├── .gitignore            # Ignoreeritavad failid (Alpine/Linux)
 ├── .dockerignore         # Dockeri build exclusions
 ├── setup-alpine.sh       # Alpine Linux eelkontrolli skript
+├── SETUP_EXAMPLES.md     # Setup skripti näited ja troubleshooting
 └── README.md             # See fail
 ```
 
