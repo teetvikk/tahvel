@@ -1,0 +1,16 @@
+{
+  "name": "tahvel-seeder",
+  "version": "1.0.0",
+  "description": "Data seeding script for Tahvel school management database",
+  "scripts": {
+    "seed": "bun run seed.ts"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^9.0.3",
+    "mysql2": "^3.11.3"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0"
+  }
+}

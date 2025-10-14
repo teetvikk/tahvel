@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  mariadb:
+    image: mariadb:11.4
+    container_name: tahvel_mariadb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./dump.sql:/docker-entrypoint-initdb.d/dump.sql
+    networks:
+      - tahvel_network
+    command: --max_allowed_packet=256M --innodb_buffer_pool_size=1G --innodb_log_file_size=256M
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: tahvel_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mariadb
+      PMA_USER: ${MYSQL_USER}
+      PMA_PASSWORD: ${MYSQL_PASSWORD}
+      UPLOAD_LIMIT: 256M
+    ports:
+      - "8080:80"
+    depends_on:
+      - mariadb
+    networks:
+      - tahvel_network
+
+  seeder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tahvel_seeder
+    environment:
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      DB_NAME: ${MYSQL_DATABASE}
+    depends_on:
+      - mariadb
+    networks:
+      - tahvel_network
+    volumes:
+      - ./seed.ts:/app/seed.ts
+      - ./package.json:/app/package.json
+    command: tail -f /dev/null
+
+volumes:
+  mariadb_data:
+
+networks:
+  tahvel_network:
+    driver: bridge
